@@ -93,12 +93,12 @@ namespace DotnetSpider.Downloader
 
 					var httpClientEntry = GetHttpClientEntry(proxy == null ? "DEFAULT" : $"{proxy.Address}", proxy);
 
-
+					
 					httpResponseMessage = Framework.NetworkCenter == null
 						? await httpClientEntry.HttpClient.SendAsync(httpRequestMessage)
 						: await Framework.NetworkCenter.Execute(async () =>
 							await httpClientEntry.HttpClient.SendAsync(httpRequestMessage));
-
+					
 					httpResponseMessage.EnsureSuccessStatusCode();
 					response.TargetUrl = httpResponseMessage.RequestMessage.RequestUri.AbsoluteUri;
 					var bytes = httpResponseMessage.Content.ReadAsByteArrayAsync().Result;
@@ -330,7 +330,7 @@ namespace DotnetSpider.Downloader
 
 			Interlocked.Increment(ref _getHttpClientCount);
 
-			if (_getHttpClientCount % 100 == 0)
+			if (_getHttpClientCount % 10 == 0)
 			{
 				CleanupPool();
 			}
@@ -349,7 +349,9 @@ namespace DotnetSpider.Downloader
 				AllowAutoRedirect = false,
 				Proxy = proxy,
 				CookieContainer = _cookieContainer
+				
 			};
+
 			var item = new HttpClientEntry(handler, AllowAutoRedirect) {LastUseTime = DateTime.Now};
 			item.HttpClient.Timeout = new TimeSpan(0, 0, 0, Timeout);
 			_httpClients.TryAdd(hash, item);

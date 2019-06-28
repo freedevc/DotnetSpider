@@ -21,6 +21,7 @@ namespace DotnetSpider.Spiders
 		{
 			Scheduler = new QueueDistinctBfsScheduler();
 			Speed = 1;
+			Depth = 2;
 			DownloaderSettings.Type = DownloaderType.HttpClient;
 			AddDataFlow(new DataParser<CnblogsEntry>()).AddDataFlow(GetDefaultStorage());
 			AddRequests(
@@ -75,8 +76,8 @@ namespace DotnetSpider.Spiders
 			public DateTime CreationTime { get; set; }
 		}
 
-		public CnblogsSpider(IMessageQueue mq, IStatisticsService statisticsService, ISpiderOptions options,
-			ILogger<Spider> logger, IServiceProvider services) : base(mq, statisticsService, options, logger, services)
+		public CnblogsSpider(IDynamicMessageQueue dmq, IMessageQueue mq, IStatisticsService statisticsService, ISpiderOptions options,
+			ILogger<Spider> logger, IServiceProvider services) : base(dmq, mq, statisticsService, options, logger, services)
 		{
 		}
 	}

@@ -28,7 +28,7 @@ namespace DotnetSpider.Downloader.Entity
 	    /// 空闲内存
 	    /// </summary>
 	    [Column("free_memory")]
-        public int FreeMemory { get; set; }
+        public ulong FreeMemory { get; set; }
 
 	    /// <summary>
 	    /// 已经分配的下载器数量

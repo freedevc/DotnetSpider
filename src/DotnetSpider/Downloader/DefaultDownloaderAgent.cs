@@ -17,8 +17,8 @@ namespace DotnetSpider.Downloader
 		/// <param name="downloaderAllocator">分配下载器的接口</param>
 		/// <param name="networkCenter">网络中心</param>
 		/// <param name="logger">日志接口</param>
-		public DefaultDownloaderAgent(IDownloaderAgentOptions options, IMessageQueue mq,
-			IDownloaderAllocator downloaderAllocator, NetworkCenter networkCenter, ILogger logger) : base(options, mq,
+		public DefaultDownloaderAgent(IDownloaderAgentOptions options,IDynamicMessageQueue dmq, IMessageQueue mq,
+			IDownloaderAllocator downloaderAllocator, NetworkCenter networkCenter, ILogger logger) : base(options,dmq, mq,
 			downloaderAllocator, networkCenter, logger)
 		{
 		}

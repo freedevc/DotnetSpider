@@ -83,8 +83,8 @@ namespace DotnetSpider.Sample.samples
 			public DateTime CreationTime { get; set; }
 		}
 
-		public EntitySpider(IMessageQueue mq, IStatisticsService statisticsService, ISpiderOptions options,
-			ILogger<Spider> logger, IServiceProvider services) : base(mq, statisticsService, options, logger, services)
+		public EntitySpider(IDynamicMessageQueue dmq, IMessageQueue mq, IStatisticsService statisticsService, ISpiderOptions options,
+			ILogger<Spider> logger, IServiceProvider services) : base(dmq, mq, statisticsService, options, logger, services)
 		{
 		}
 	}

@@ -8,7 +8,7 @@ namespace DotnetSpider.Selector
     /// 查询器类型
     /// </summary>
     [Flags]
-#if !NET451
+#if !NET452
 	[JsonConverter(typeof(StringEnumConverter))]
 #endif
     public enum SelectorType

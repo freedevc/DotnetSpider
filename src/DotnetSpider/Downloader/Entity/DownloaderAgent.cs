@@ -36,7 +36,7 @@ namespace DotnetSpider.Downloader.Entity
 		/// 总内存
 		/// </summary>
 		[Column("total_memory")]
-		public int TotalMemory { get; set; }
+		public ulong TotalMemory { get; set; }
 
 		/// <summary>
 		/// 上一次更新时间

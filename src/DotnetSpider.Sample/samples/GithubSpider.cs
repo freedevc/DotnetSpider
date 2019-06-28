@@ -13,6 +13,12 @@ namespace DotnetSpider.Sample.samples
 {
 	public class GithubSpider : Spider
 	{
+		public static Task Run()
+		{
+			var spider = Create<GithubSpider>();
+			return spider.RunAsync();
+		}
+
 		class Parser : DataParserBase
 		{
 			protected override Task<DataFlowResult> Parse(DataFlowContext context)
@@ -41,8 +47,8 @@ namespace DotnetSpider.Sample.samples
 			}
 		}
 
-		public GithubSpider(IMessageQueue mq, IStatisticsService statisticsService, ISpiderOptions options,
-			ILogger<Spider> logger, IServiceProvider services) : base(mq, statisticsService, options, logger, services)
+		public GithubSpider(IDynamicMessageQueue dmq, IMessageQueue mq, IStatisticsService statisticsService, ISpiderOptions options,
+			ILogger<Spider> logger, IServiceProvider services) : base(dmq, mq, statisticsService, options, logger, services)
 		{
 		}
 
@@ -51,6 +57,7 @@ namespace DotnetSpider.Sample.samples
 			NewGuidId();
 			RetryDownloadTimes = 3;
 			DownloaderSettings.Timeout = 5000;
+			Speed = 1;
 			DownloaderSettings.Type = DownloaderType.HttpClient;
 			AddDataFlow(new Parser()).AddDataFlow(new ConsoleStorage());
 			AddRequests("https://github.com/zlzforever");

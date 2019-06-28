@@ -4,12 +4,13 @@ using DotnetSpider.Core;
 namespace DotnetSpider.Downloader.Entity
 {
 	/// <summary>
+	/// Options for assigning the downloader agent (message)
 	/// 分配下载器代理的选项(消息)
 	/// </summary>
 	public class AllocateDownloaderMessage
 	{
 		/// <summary>
-		/// 下载策略
+		/// Download Policy
 		/// </summary>
 		public DownloadPolicy DownloadPolicy { get; set; }
 
@@ -54,11 +55,13 @@ namespace DotnetSpider.Downloader.Entity
 		public bool DecodeHtml { get; set; }
 
 		/// <summary>
+		/// The number of downloader agents that need to be allocated
 		/// 需要分配的下载器代理的个数
 		/// </summary>
 		public int DownloaderCount { get; set; }
 
 		/// <summary>
+		/// Download retries
 		/// 下载重试次数
 		/// </summary>
 		public int RetryTimes { get; set; } = 3;

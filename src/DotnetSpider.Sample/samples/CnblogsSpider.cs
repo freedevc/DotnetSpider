@@ -41,7 +41,8 @@ namespace DotnetSpider.Sample.samples
             }
         }
 
-        public CnblogsSpider(IMessageQueue mq, IStatisticsService statisticsService, ISpiderOptions options, ILogger<Spider> logger, IServiceProvider services) : base(mq, statisticsService, options, logger, services)
+        public CnblogsSpider(IDynamicMessageQueue dmq, IMessageQueue mq, IStatisticsService statisticsService, ISpiderOptions options, ILogger<Spider> logger, IServiceProvider services) 
+			: base(dmq,mq, statisticsService, options, logger, services)
         {
         }
     }

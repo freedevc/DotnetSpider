@@ -9,7 +9,7 @@ namespace DotnetSpider.Data.Parser.Attribute
 	[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 	public class FollowSelector : System.Attribute
 	{
-#if !NET451
+#if !NET452
 		/// <summary>
 		/// 避免被序列化出去
 		/// </summary>

@@ -54,5 +54,16 @@ namespace DotnetSpider
 				_isRunning = true;
 			}
 		}
+
+		public void Stop()
+		{
+			if (_isRunning)
+			{
+				_serviceProvider.GetService<IDownloadCenter>()?.StartAsync(default).ConfigureAwait(false).GetAwaiter();
+				_serviceProvider.GetService<IDownloaderAgent>()?.StopAsync(default).ConfigureAwait(false).GetAwaiter();
+				_serviceProvider.GetService<IStatisticsCenter>()?.StopAsync(default).ConfigureAwait(false).GetAwaiter();
+				_isRunning =false;
+			}
+		}
 	}
 }

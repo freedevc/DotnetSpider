@@ -34,6 +34,10 @@ namespace DotnetSpider.Downloader
 		public int Depth { get; set; }
 
 		/// <summary>
+		/// Paging Index of the request. Default = 1
+		/// </summary>
+		public int PageIndex { get; set; } = 1;
+		/// <summary>
 		/// 请求链接
 		/// </summary>
 		public string Url { get; set; }

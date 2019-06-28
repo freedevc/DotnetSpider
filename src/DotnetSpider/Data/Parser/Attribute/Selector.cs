@@ -8,7 +8,7 @@ namespace DotnetSpider.Data.Parser.Attribute
 	/// </summary>
 	public class Selector : System.Attribute
 	{
-#if !NET451
+#if !NET452
 		/// <summary>
 		/// 避免被序列化出去
 		/// </summary>

@@ -26,8 +26,8 @@ using Newtonsoft.Json;
 namespace DotnetSpider
 {
 	/// <summary>
-	/// Depth 是独立的系统，只有真的是解析出来的新请求才会导致 Depth 加 1， Depth 一般不能作为 Request 的 Hash 计算，因为不同深度会有相同的链接
-	/// 下载和解析导致的重试都不需要更改 Depth, 直接调用下载分发服务，跳过 Scheduler
+	/// Depth is a stand-alone system. Only a new request that is really parsed will cause Depth to be incremented.Depth can't be used as a Hash calculation for Request, because different depths will have the same link.
+	/// Downloading and parsing causes retry without changing Depth, directly calling the download distribution service, skipping the Scheduler
 	/// </summary>
 	public partial class Spider
 	{
@@ -35,10 +35,10 @@ namespace DotnetSpider
 		private readonly ISpiderOptions _options;
 
 		/// <summary>
-		/// 结束前的处理工作
+		/// Processing before the end
 		/// </summary>
 		/// <returns></returns>
-		protected virtual Task OnExiting()
+		protected virtual Task OnExiting(IServiceProvider serviceProvider)
 		{
 #if NETFRAMEWORK
 			return Framework.CompletedTask;
@@ -48,7 +48,7 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 构造方法
+		/// Spider Constructor
 		/// </summary>
 		/// <param name="mq"></param>
 		/// <param name="options"></param>
@@ -56,12 +56,14 @@ namespace DotnetSpider
 		/// <param name="services">服务提供接口</param>
 		/// <param name="statisticsService"></param>
 		public Spider(
+			IDynamicMessageQueue dmq,
 			IMessageQueue mq,
 			IStatisticsService statisticsService,
 			ISpiderOptions options,
 			ILogger<Spider> logger,
 			IServiceProvider services)
 		{
+			_dmq = dmq;
 			_services = services;
 			_statisticsService = statisticsService;
 			_mq = mq;
@@ -71,7 +73,7 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 创建爬虫对象
+		/// Create a Spider object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <returns></returns>
@@ -87,7 +89,7 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 设置 Id 为 Guid
+		/// Create New GUID for Id
 		/// </summary>
 		public Spider NewGuidId()
 		{
@@ -97,10 +99,10 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 添加请求的配置方法
-		/// 可以计算 Cookie, Sign 等操作
+		/// Add a request configuration method
+		/// Can calculate cookies, Signs, etc
 		/// </summary>
-		/// <param name="configureDelegate">配置方法</param>
+		/// <param name="configureDelegate">Configuration method</param>
 		/// <returns></returns>
 		public Spider AddConfigureRequestDelegate(Action<Request> configureDelegate)
 		{
@@ -110,7 +112,7 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 添加数据流处理器
+		/// Add DataFlow
 		/// </summary>
 		/// <param name="dataFlow">数据流处理器</param>
 		/// <returns></returns>
@@ -124,7 +126,7 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 添加请求供应器
+		/// Add Request Supply
 		/// </summary>
 		/// <param name="supply">请求供应器</param>
 		/// <returns></returns>
@@ -137,7 +139,7 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 添加请求
+		/// Add Requests
 		/// </summary>
 		/// <param name="requests">请求</param>
 		/// <returns></returns>
@@ -161,7 +163,7 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 添加链接
+		/// Add Requests
 		/// </summary>
 		/// <param name="urls">链接</param>
 		/// <returns></returns>
@@ -172,7 +174,7 @@ namespace DotnetSpider
 
 			foreach (var url in urls)
 			{
-				var request = new Request {Url = url, OwnerId = Id, Depth = 1, Method = HttpMethod.Get};
+				var request = new Request { Url = url, OwnerId = Id, Depth = 1, Method = HttpMethod.Get };
 				_requests.Add(request);
 				if (_requests.Count % EnqueueBatchCount == 0)
 				{
@@ -184,56 +186,63 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 启动爬虫
+		/// Start crawler
 		/// </summary>
-		/// <param name="args">启动参数</param>
+		/// <param name="args">arguments</param>
 		/// <returns></returns>
 		public Task RunAsync(params string[] args)
 		{
 			CheckIfRunning();
-			// 此方法不能放到异步里, 如果在调用 RunAsync 后再直接调用 ExitBySignal 有可能会因会执行顺序原因导致先调用退出，然后退出信号被重置
+			// This method can't be put into the asynchronous. If you call ExitBySignal directly after calling RunAsync, it may be called first to exit due to the execution order, and then the exit signal is reset.
 			ResetMmfSignal();
 			return Task.Factory.StartNew(async () =>
 			{
 				try
 				{
-					_logger.LogInformation("初始化爬虫");
-					// 初始化设置
+
+					_logger.LogInformation("Initialize the crawler");
+					// Initialization settings
 					Initialize();
 
-					// 设置默认调度器
+					// Set default scheduler
 					_scheduler = _scheduler ?? new QueueDistinctBfsScheduler();
 
-					// 设置状态为: 运行
+					// The setting status is: Run
 					Status = Status.Running;
 
-					// 添加任务启动的监控信息
+					// Add task-initiated monitoring information
 					await _statisticsService.StartAsync(Id);
 
-					// 订阅数据流，如果订阅失败
+					// Subscribe to the data stream if the subscription fails
 					_mq.Subscribe($"{Framework.ResponseHandlerTopic}{Id}",
 						async message => await HandleMessage(message));
-					_logger.LogInformation($"任务 {Id} 订阅消息队列成功");
+					// Subscribe to to handle dynamic ResponseHandler
+					if (_dmq != null)
+					{
+						_dmq.Subscribe($"{Framework.ResponseHandlerTopic}{Id}",
+							async (cmd, message) => await HandleDynamicMessage(cmd, message));
+					}
+					_logger.LogInformation($"Task {Id} subscribed to the message queue successfully");
 
-					// 如果设置了要分配 10 个下载器，当收到 10 个下载器已经分配好时，认为分配完成
+					// If you have set up 10 downloaders to be assigned, the distribution is considered complete when 10 downloaders have been assigned.
 					_allocated.Set(0);
-					// 如果有任何一个下载器代理分配失败，收到消息后直接把此值赋为 false，爬虫退出
+					// If any of the downloader proxy assignments fail, directly assign this value to false after receiving the message, the crawler exits
 					_allocatedSuccess = true;
-					// 先分配下载器，因为分配下载器的开销、时间更小，后面 RequestSupply 可能加载大量的请求，时间开销很大
+					// The downloader is allocated first, because the overhead and time of the downloader are smaller, and then RequestSupply may load a large number of requests, which is expensive.
 					await AllotDownloaderAsync();
 
-					// 等待 30 秒如果没有完成分配，超时结束
+					// Wait 30 seconds, if the allocation is not completed, the timeout ends.
 					for (var i = 0; i < 200; ++i)
 					{
 						if (!_allocatedSuccess)
 						{
-							_logger.LogInformation($"任务 {Id} 分配下载器代理失败");
+							_logger.LogInformation($"Task {Id} failed to allocate downloader proxy");
 							return;
 						}
 
 						if (_allocated.Value == DownloaderSettings.DownloaderCount)
 						{
-							_logger.LogInformation($"任务 {Id} 分配下载器代理成功");
+							_logger.LogInformation($"Task {Id} Assigned Downloader Agent Successful");
 							break;
 						}
 
@@ -242,37 +251,37 @@ namespace DotnetSpider
 
 					if (_allocated.Value == 0)
 					{
-						_logger.LogInformation($"任务 {Id} 分配下载器代理失败");
+						_logger.LogInformation($"Task {Id} failed to allocate downloader proxy");
 						return;
 					}
 
-					// 通过供应接口添加请求
+					// Add a request through the provisioning interface
 					foreach (var requestSupply in _requestSupplies)
 					{
 						requestSupply.Run(request => AddRequests(request));
 					}
 
-					// 把列表中可能剩余的请求加入队列
+					// Queue the possible remaining requests in the list
 					EnqueueRequests();
-					_logger.LogInformation($"任务 {Id} 加载下载请求结束");
+					_logger.LogInformation($"Task {Id} loads the download request to end");
 
-					// 初始化各数据流处理器
+					// Initialize each Data Flow processor
 					foreach (var dataFlow in _dataFlows)
 					{
 						await dataFlow.InitAsync();
 					}
 
-					_logger.LogInformation($"任务 {Id} 数据流处理器初始化完成");
+					_logger.LogInformation($"Task {Id} Data Flow processor initialization completed");
 					_enqueued.Set(0);
 					_responded.Set(0);
 					_enqueuedRequestDict.Clear();
 
-					// 启动速度控制器
+					// Start speed controller
 					StartSpeedControllerAsync().ConfigureAwait(false).GetAwaiter();
 
 					_lastRequestedTime = DateTime.Now;
 
-					// 等待退出信号
+					// Waiting for exit signal
 					await WaitForExiting();
 				}
 				catch (Exception e)
@@ -295,36 +304,38 @@ namespace DotnetSpider
 
 					try
 					{
+						// TODO: If the subscription to the message queue fails, whether it should be tried again here, it will cause twice the retry time. 
 						// TODO: 如果订阅消息队列失败，此处是否应该再尝试上报，会导致两倍的重试时间
+						// Add the monitoring information of the task exit.
 						// 添加任务退出的监控信息
 						await _statisticsService.ExitAsync(Id);
 
-						// 最后打印一次任务状态信息
+						// Last print task status information
 						await _statisticsService.PrintStatisticsAsync(Id);
 					}
 					catch (Exception e)
 					{
-						_logger.LogInformation($"任务 {Id} 上传退出信息失败: {e}");
+						_logger.LogInformation($"Task {Id} failed to upload and exit information: {e}");
 					}
 
 					try
 					{
-						await OnExiting();
+						await OnExiting(_services);
 					}
 					catch (Exception e)
 					{
-						_logger.LogInformation($"任务 {Id} 退出事件处理失败: {e}");
+						_logger.LogInformation($"Task {Id} exit event processing failed: {e}");
 					}
 
-					// 标识任务退出完成
+					// Identification task exit completed
 					Status = Status.Exited;
-					_logger.LogInformation($"任务 {Id} 退出");
+					_logger.LogInformation($"Task {Id} exit");
 				}
 			});
 		}
 
 		/// <summary>
-		/// 暂停爬虫
+		/// Pause crawling
 		/// </summary>
 		public void Pause()
 		{
@@ -332,7 +343,7 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 继续爬虫
+		/// Continue crawling
 		/// </summary>
 		public void Continue()
 		{
@@ -340,19 +351,19 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 退出爬虫
+		/// Exit the crawler
 		/// </summary>
 		public Spider Exit()
 		{
-			_logger.LogInformation($"任务 {Id} 退出中...");
+			_logger.LogInformation($"Task {Id} is exiting...");
 			Status = Status.Exiting;
-			// 直接取消订阅即可: 1. 如果是本地应用, 
+			// Cancel your subscription directly: 1. If it is a local app
 			_mq.Unsubscribe($"{Framework.ResponseHandlerTopic}{Id}");
 			return this;
 		}
 
 		/// <summary>
-		/// 发送退出信号
+		/// Send exit signal
 		/// </summary>
 		public Spider ExitBySignal()
 		{
@@ -367,11 +378,11 @@ namespace DotnetSpider
 					accessor.Flush();
 				}
 
-				_logger.LogInformation($"任务 {Id} 推送退出信号到 MMF 成功");
+				_logger.LogInformation($"Task {Id} push exit signal to MMF success");
 				return this;
 			}
 
-			throw new SpiderException($"任务 {Id} 未开启 MMF 控制");
+			throw new SpiderException($"Task {Id} does not turn on MMF control");
 		}
 
 		public void Run(params string[] args)
@@ -380,7 +391,7 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 等待任务结束
+		/// Waiting for the end
 		/// </summary>
 		public void WaitForExit(long milliseconds = 0)
 		{
@@ -394,14 +405,14 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 初始化配置
+		/// Initial configuration
 		/// </summary>
 		protected virtual void Initialize()
 		{
 		}
 
 		/// <summary>
-		/// 从配置文件中获取数据存储器
+		/// Get data storage from configuration file
 		/// </summary>
 		/// <returns></returns>
 		/// <exception cref="SpiderException"></exception>
@@ -415,28 +426,28 @@ namespace DotnetSpider
 			var type = Type.GetType(options.Storage);
 			if (type == null)
 			{
-				throw new SpiderException("存储器类型配置不正确，或者未添加对应的库");
+				throw new SpiderException("The Storage type is not configured correctly, or the corresponding library is not added.");
 			}
 
 			if (!typeof(StorageBase).IsAssignableFrom(type))
 			{
-				throw new SpiderException("存储器类型配置不正确");
+				throw new SpiderException("Storage type configuration is incorrect");
 			}
 
 			var method = type.GetMethod("CreateFromOptions");
 
 			if (method == null)
 			{
-				throw new SpiderException("存储器未实现 CreateFromOptions 方法，无法自动创建");
+				throw new SpiderException("The Storage does not implement the CreateFromOptions method and cannot be created automatically");
 			}
 
-			var storage = method.Invoke(null, new object[] {options});
+			var storage = method.Invoke(null, new object[] { options });
 			if (storage == null)
 			{
-				throw new SpiderException("创建默认存储器失败");
+				throw new SpiderException("Failed to create default storage");
 			}
 
-			return (StorageBase) storage;
+			return (StorageBase)storage;
 		}
 
 		private void ResetMmfSignal()
@@ -454,13 +465,13 @@ namespace DotnetSpider
 				{
 					accessor.Write(0, false);
 					accessor.Flush();
-					_logger.LogInformation("任务 {Id} 初始化 MMF 退出信号");
+					_logger.LogInformation($"Task {Id} initializes MMF exit signal");
 				}
 			}
 		}
 
 		/// <summary>
-		/// 爬虫速度控制器
+		/// Start speed controller
 		/// </summary>
 		/// <returns></returns>
 		private Task StartSpeedControllerAsync()
@@ -476,7 +487,7 @@ namespace DotnetSpider
 
 				using (var accessor = mmf?.CreateViewAccessor())
 				{
-					_logger.LogInformation($"任务 {Id} 速度控制器启动");
+					_logger.LogInformation($"Task {Id} speed controller starts");
 
 					var paused = 0;
 					while (!@break)
@@ -488,112 +499,112 @@ namespace DotnetSpider
 							switch (Status)
 							{
 								case Status.Running:
-								{
-									try
 									{
-										// 判断是否过多下载请求未得到回应
-										if (_enqueued.Value - _responded.Value > NonRespondedLimitation)
+										try
 										{
-											if (paused > NonRespondedTimeLimitation)
+											// Determine if too many download requests have not been answered
+											if (_enqueued.Value - _responded.Value > NonRespondedLimitation)
 											{
-												_logger.LogInformation(
-													$"任务 {Id} {NonRespondedTimeLimitation} 秒未收到下载回应");
-												@break = true;
-												break;
-											}
+												if (paused > NonRespondedTimeLimitation)
+												{
+													_logger.LogInformation(
+														$"Task {Id} {NonRespondedTimeLimitation} seconds did not receive a download response");
+													@break = true;
+													break;
+												}
 
-											paused += _speedControllerInterval;
-											_logger.LogInformation($"任务 {Id} 速度控制器因过多下载请求未得到回应暂停");
-											continue;
-										}
-
-										paused = 0;
-
-										// 重试超时的下载请求
-										var timeoutRequests = new List<Request>();
-										var now = DateTime.Now;
-										foreach (var kv in _enqueuedRequestDict)
-										{
-											if (!((now - kv.Value.CreationTime).TotalSeconds > RespondedTimeout))
-											{
+												paused += _speedControllerInterval;
+												_logger.LogInformation($"Task {Id} Speed ​​Controller has not been suspended due to excessive download requests");
 												continue;
 											}
 
-											kv.Value.RetriedTimes++;
-											if (kv.Value.RetriedTimes > RespondedTimeoutRetryTimes)
+											paused = 0;
+
+											// Retry timeout download request
+											var timeoutRequests = new List<Request>();
+											var now = DateTime.Now;
+											foreach (var kv in _enqueuedRequestDict)
 											{
-												_logger.LogInformation(
-													$"任务 {Id} 重试下载请求 {RespondedTimeoutRetryTimes} 次未收到下载回应");
-												@break = true;
-												break;
-											}
-
-											timeoutRequests.Add(kv.Value);
-										}
-
-										// 如果有超时的下载则重试，无超时的下载则从调度队列里取
-										if (timeoutRequests.Count > 0)
-										{
-											await EnqueueRequests(timeoutRequests.ToArray());
-										}
-										else
-										{
-											var requests = _scheduler.Dequeue(Id, _dequeueBatchCount);
-
-											if (requests == null || requests.Length == 0) break;
-
-											foreach (var request in requests)
-											{
-												foreach (var configureRequestDelegate in _configureRequestDelegates)
+												if (!((now - kv.Value.CreationTime).TotalSeconds > RespondedTimeout))
 												{
-													configureRequestDelegate(request);
+													continue;
 												}
+
+												kv.Value.RetriedTimes++;
+												if (kv.Value.RetriedTimes > RespondedTimeoutRetryTimes)
+												{
+													_logger.LogInformation(
+														$"Task {Id} Retry Download Request {RespondedTimeoutRetryTimes} Not Received Download Response");
+													@break = true;
+													break;
+												}
+
+												timeoutRequests.Add(kv.Value);
 											}
 
-											await EnqueueRequests(requests);
-										}
-									}
-									catch (Exception e)
-									{
-										_logger.LogError($"任务 {Id} 速度控制器运转失败: {e}");
-									}
+											// If there is a timeout download, try again, and no timeout download is taken from the dispatch queue.
+											if (timeoutRequests.Count > 0)
+											{
+												await EnqueueRequests(timeoutRequests.ToArray());
+											}
+											else
+											{
+												var requests = _scheduler.Dequeue(Id, _dequeueBatchCount);
 
-									break;
-								}
+												if (requests == null || requests.Length == 0) break;
+
+												foreach (var request in requests)
+												{
+													foreach (var configureRequestDelegate in _configureRequestDelegates)
+													{
+														configureRequestDelegate(request);
+													}
+												}
+
+												await EnqueueRequests(requests);
+											}
+										}
+										catch (Exception e)
+										{
+											_logger.LogError($"Task {Id} speed controller failed: {e}");
+										}
+
+										break;
+									}
 								case Status.Paused:
-								{
-									_logger.LogDebug($"任务 {Id} 速度控制器暂停");
-									break;
-								}
+									{
+										_logger.LogDebug($"Task {Id} speed controller paused");
+										break;
+									}
 								case Status.Exiting:
 								case Status.Exited:
-								{
-									@break = true;
-									break;
-								}
+									{
+										@break = true;
+										break;
+									}
 							}
 
 							if (!@break && accessor != null && accessor.ReadBoolean(0))
 							{
-								_logger.LogInformation($"任务 {Id} 收到 MMF 退出信号");
+								_logger.LogInformation($"Task {Id} received MMF exit signal");
 								Exit();
 							}
 						}
 						catch (Exception e)
 						{
-							_logger.LogError($"任务 {Id} 速度控制器运转失败: {e}");
+							_logger.LogError($"Task {Id} speed controller failed: {e}");
 						}
 					}
 				}
 
-				_logger.LogInformation($"任务 {Id} 速度控制器退出");
+				_logger.LogInformation($"Task {Id} speed controller exit");
 			});
 		}
 
 		/// <summary>
-		/// 分配下载器
+		/// Distribution downloader
 		/// </summary>
-		/// <returns>是否分配成功</returns>
+		/// <returns>Whether the assignment is successful</returns>
 		private async Task AllotDownloaderAsync()
 		{
 			var json = JsonConvert.SerializeObject(new AllocateDownloaderMessage
@@ -616,7 +627,7 @@ namespace DotnetSpider
 		{
 			if (string.IsNullOrWhiteSpace(message))
 			{
-				_logger.LogWarning($"任务 {Id} 接收到空消息");
+				_logger.LogWarning($"Task {Id} received an empty message");
 				return;
 			}
 
@@ -626,24 +637,24 @@ namespace DotnetSpider
 				switch (commandMessage.Command)
 				{
 					case Framework.AllocateDownloaderCommand:
-					{
-						if (commandMessage.Message == "true")
 						{
-							_allocated.Inc();
-						}
-						else
-						{
-							_logger.LogError($"任务 {Id} 分配下载器代理失败");
-							_allocatedSuccess = false;
-						}
+							if (commandMessage.Message == "true")
+							{
+								_allocated.Inc();
+							}
+							else
+							{
+								_logger.LogError($"Task {Id} failed to allocate downloader proxy");
+								_allocatedSuccess = false;
+							}
 
-						break;
-					}
+							break;
+						}
 					default:
-					{
-						_logger.LogError($"任务 {Id} 未能处理命令: {message}");
-						break;
-					}
+						{
+							_logger.LogError($"Task {Id} failed to process command: { message}");
+							break;
+						}
 				}
 
 				return;
@@ -659,7 +670,7 @@ namespace DotnetSpider
 			}
 			catch
 			{
-				_logger.LogError($"任务 {Id} 接收到异常消息: {message}");
+				_logger.LogError($"Task {Id} received an exception message: {message}");
 				return;
 			}
 
@@ -667,14 +678,14 @@ namespace DotnetSpider
 			{
 				if (responses.Length == 0)
 				{
-					_logger.LogWarning($"任务 {Id} 接收到空回复");
+					_logger.LogWarning($"Task {Id} received an empty reply");
 					return;
 				}
 
 				_responded.Add(responses.Length);
 
-				// 只要有回应就从缓存中删除，即便是异常要重新下载会成 EnqueueRequest 中重新加回缓存
-				// 此处只需要保证: 发 -> 收 可以一对一删除就可以保证检测机制的正确性
+				// As long as there is a response, it will be deleted from the cache. Even if the exception is to be re-downloaded, it will be added back to the cache in EnqueueRequest.
+				// Here only need to ensure: Send -> Receive can be one-to-one delete to ensure the correctness of the detection mechanism
 				foreach (var response in responses)
 				{
 					_enqueuedRequestDict.TryRemove(response.Request.Hash, out _);
@@ -683,7 +694,7 @@ namespace DotnetSpider
 				var agentId = responses.First().AgentId;
 
 				var successResponses = responses.Where(x => x.Success).ToList();
-				// 统计下载成功
+				// Statistical download success
 				if (successResponses.Count > 0)
 				{
 					var elapsedMilliseconds = successResponses.Sum(x => x.ElapsedMilliseconds);
@@ -691,15 +702,15 @@ namespace DotnetSpider
 						elapsedMilliseconds);
 				}
 
-				// 处理下载成功的请求
+				// Handling a successful download request
 				Parallel.ForEach(successResponses, async response =>
 				{
-					_logger.LogInformation($"任务 {Id} 下载 {response.Request.Url} 成功");
+					_logger.LogInformation($"Task {Id} Download {response.Request.Url} Success");
 
 					try
 					{
 						var context = new DataFlowContext(response, _services.CreateScope().ServiceProvider);
-
+						context["ProjectName"] = "Vnexpress.net";
 						foreach (var dataFlow in _dataFlows)
 						{
 							var dataFlowResult = await dataFlow.HandleAsync(context);
@@ -707,21 +718,21 @@ namespace DotnetSpider
 							switch (dataFlowResult)
 							{
 								case DataFlowResult.Success:
-								{
-									continue;
-								}
+									{
+										continue;
+									}
 								case DataFlowResult.Failed:
-								{
-									// 如果处理失败，则直接返回
-									_logger.LogInformation($"任务 {Id} 处理 {response.Request.Url} 失败: {context.Result}");
-									await _statisticsService.IncrementFailedAsync(Id);
-									return;
-								}
+									{
+										// If the processing fails, return directly
+										_logger.LogInformation($"Task {Id} failed to process {response.Request.Url}: {context.Result}");
+										await _statisticsService.IncrementFailedAsync(Id);
+										return;
+									}
 								case DataFlowResult.Terminated:
-								{
-									@break = true;
-									break;
-								}
+									{
+										@break = true;
+										break;
+									}
 							}
 
 							if (@break)
@@ -731,29 +742,43 @@ namespace DotnetSpider
 						}
 
 						var resultIsEmpty = !context.HasItems && !context.HasParseItems;
-						// 如果解析结果为空，重试
+						// If the parsing result is empty, try again
 						if (resultIsEmpty && RetryWhenResultIsEmpty)
 						{
 							if (response.Request.RetriedTimes < RetryDownloadTimes)
 							{
 								response.Request.RetriedTimes++;
 								await EnqueueRequests(response.Request);
-								// 即然是重试这个请求，则解析必然还会再执行一遍，所以解析到的目标链接、成功状态都应该到最后来处理。
-								_logger.LogInformation($"任务 {Id} 处理 {response.Request.Url} 解析结果为空，尝试重试");
+
+								// Now that the request is retried, the parsing will inevitably be executed again, so the resolved target link and success status should be processed at the end.
+								_logger.LogInformation($"Task {Id} processing {response.Request.Url} parsing result is empty, try to try again.");
 								return;
 							}
 						}
 
-						// 解析的目标请求
+						// Parsed target request
 						if (context.FollowRequests != null && context.FollowRequests.Count > 0)
 						{
 							var requests = new List<Request>();
+							var currentPageIndex = 1;
+							var requestPageIndexValue = context.Response.Request.GetProperty("PageIndex");
+							if (!string.IsNullOrWhiteSpace(requestPageIndexValue))
+							{
+								currentPageIndex = int.Parse(requestPageIndexValue);
+							}
 							foreach (var followRequest in context.FollowRequests)
 							{
-								followRequest.Depth = response.Request.Depth + 1;
-								if (followRequest.Depth <= Depth)
+								if (followRequest.PageIndex <= PageLimit)
 								{
-									requests.Add(followRequest);
+									// only increase Depth in case of page detail not Next Page.
+									if (followRequest.PageIndex == currentPageIndex)
+									{
+										followRequest.Depth = response.Request.Depth + 1;
+									}
+									if (followRequest.Depth <= Depth)
+									{
+										requests.Add(followRequest);
+									}
 								}
 							}
 
@@ -767,30 +792,31 @@ namespace DotnetSpider
 						if (!resultIsEmpty)
 						{
 							await _statisticsService.IncrementSuccessAsync(Id);
-							_logger.LogInformation($"任务 {Id} 处理 {response.Request.Url} 成功");
+							_logger.LogInformation($"Task {Id} processed {response.Request.Url} successfully.");
 						}
 						else
 						{
 							if (RetryWhenResultIsEmpty)
 							{
 								await _statisticsService.IncrementFailedAsync(Id);
-								_logger.LogInformation($"任务 {Id} 处理 {response.Request.Url} 失败，解析结果为空");
+								_logger.LogInformation($"Task {Id} failed to process {response.Request.Url}, parsing result is empty.");
 							}
 							else
 							{
 								await _statisticsService.IncrementSuccessAsync(Id);
-								_logger.LogInformation($"任务 {Id} 处理 {response.Request.Url} 成功，解析结果为空");
+								_logger.LogInformation($"Task {Id} processed {response.Request.Url} succeeded, parsing result is empty.");
 							}
 						}
 					}
 					catch (Exception e)
 					{
 						await _statisticsService.IncrementFailedAsync(Id);
-						_logger.LogInformation($"任务 {Id} 处理 {response.Request.Url} 失败: {e}");
+						_logger.LogInformation($"Task {Id} failed to process {response.Request.Url}: {e}");
 					}
 				});
 
 				// TODO: 此处需要优化
+				// Need to optimize here
 				var retryResponses =
 					responses.Where(x => !x.Success && x.Request.RetriedTimes < RetryDownloadTimes)
 						.ToList();
@@ -806,12 +832,12 @@ namespace DotnetSpider
 					retryResponses.ForEach(x =>
 					{
 						x.Request.RetriedTimes++;
-						_logger.LogInformation($"任务 {Id} 下载 {x.Request.Url} 失败: {x.Exception}");
+						_logger.LogInformation($"Task {Id} Download {x.Request.Url} failed: {x.Exception}");
 					});
 					await EnqueueRequests(retryResponses.Select(x => x.Request).ToArray());
 				}
 
-				// 统计下载失败
+				// Statistical download failed
 				if (downloadFailedResponses.Count > 0)
 				{
 					var elapsedMilliseconds = downloadFailedResponses.Sum(x => x.ElapsedMilliseconds);
@@ -819,7 +845,7 @@ namespace DotnetSpider
 						downloadFailedResponses.Count, elapsedMilliseconds);
 				}
 
-				// 统计失败
+				// Statistical failure
 				if (failedResponses.Count > 0)
 				{
 					await _statisticsService.IncrementFailedAsync(Id, failedResponses.Count);
@@ -827,12 +853,223 @@ namespace DotnetSpider
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError($"任务 {Id} 处理消息 {message} 失败: {ex}");
+				_logger.LogError($"Task {Id} processing message {message} failed: {ex}");
 			}
 		}
 
+
+		private async Task HandleDynamicMessage(string cmd, dynamic message)
+		{
+
+
+			_lastRequestedTime = DateTime.Now;
+
+			Response[] responses;
+
+			try
+			{
+				responses = message as Response[];// JsonConvert.DeserializeObject<Response[]>(message);
+				if (responses == null)
+				{
+					var response = message as Response;
+					if (response != null)
+					{
+						responses = new Response[] { response };
+					}
+				}
+			}
+			catch
+			{
+				_logger.LogError($"Task {Id} received an exception message: {message}");
+				return;
+			}
+
+			try
+			{
+				if (responses == null || responses.Length == 0)
+				{
+					_logger.LogWarning($"Task {Id} received an empty reply");
+					return;
+				}
+
+				_responded.Add(responses.Length);
+
+				// As long as there is a response, it will be deleted from the cache. Even if the exception is to be re-downloaded, it will be added back to the cache in EnqueueRequest.
+				// Here only need to ensure: Send -> Receive can be one-to-one delete to ensure the correctness of the detection mechanism
+				foreach (var response in responses)
+				{
+					_enqueuedRequestDict.TryRemove(response.Request.Hash, out _);
+				}
+
+				var agentId = responses.First().AgentId;
+
+				var successResponses = responses.Where(x => x.Success).ToList();
+				// Statistical download success
+				if (successResponses.Count > 0)
+				{
+					var elapsedMilliseconds = successResponses.Sum(x => x.ElapsedMilliseconds);
+					await _statisticsService.IncrementDownloadSuccessAsync(agentId, successResponses.Count,
+						elapsedMilliseconds);
+				}
+
+				// Handling a successful download request
+				Parallel.ForEach(successResponses, async response =>
+				{
+					_logger.LogInformation($"Task {Id} Download {response.Request.Url} Success");
+
+					try
+					{
+						var context = new DataFlowContext(response, _services.CreateScope().ServiceProvider);
+						context["ProjectName"] = "Vnexpress.net";
+						foreach (var dataFlow in _dataFlows)
+						{
+							var dataFlowResult = await dataFlow.HandleAsync(context);
+							var @break = false;
+							switch (dataFlowResult)
+							{
+								case DataFlowResult.Success:
+									{
+										continue;
+									}
+								case DataFlowResult.Failed:
+									{
+										// If the processing fails, return directly
+										_logger.LogInformation($"Task {Id} failed to process {response.Request.Url}: {context.Result}");
+										await _statisticsService.IncrementFailedAsync(Id);
+										return;
+									}
+								case DataFlowResult.Terminated:
+									{
+										@break = true;
+										break;
+									}
+							}
+
+							if (@break)
+							{
+								break;
+							}
+						}
+
+						var resultIsEmpty = !context.HasItems && !context.HasParseItems;
+						// If the parsing result is empty, try again
+						if (resultIsEmpty && RetryWhenResultIsEmpty)
+						{
+							if (response.Request.RetriedTimes < RetryDownloadTimes)
+							{
+								response.Request.RetriedTimes++;
+								await EnqueueRequests(response.Request);
+
+								// Now that the request is retried, the parsing will inevitably be executed again, so the resolved target link and success status should be processed at the end.
+								_logger.LogInformation($"Task {Id} processing {response.Request.Url} parsing result is empty, try to try again.");
+								return;
+							}
+						}
+
+						// Parsed target request
+						if (context.FollowRequests != null && context.FollowRequests.Count > 0)
+						{
+							var requests = new List<Request>();
+							var currentPageIndex = 1;
+							var requestPageIndexValue = context.Response.Request.GetProperty("PageIndex");
+							if (!string.IsNullOrWhiteSpace(requestPageIndexValue))
+							{
+								currentPageIndex = int.Parse(requestPageIndexValue);
+							}
+							foreach (var followRequest in context.FollowRequests)
+							{
+								if (followRequest.PageIndex <= PageLimit)
+								{
+									// only increase Depth in case of page detail not Next Page.
+									if (followRequest.PageIndex == currentPageIndex)
+									{
+										followRequest.Depth = response.Request.Depth + 1;
+									}
+									if (followRequest.Depth <= Depth)
+									{
+										requests.Add(followRequest);
+									}
+								}
+							}
+
+							var count = _scheduler.Enqueue(requests);
+							if (count > 0)
+							{
+								await _statisticsService.IncrementTotalAsync(Id, count);
+							}
+						}
+
+						if (!resultIsEmpty)
+						{
+							await _statisticsService.IncrementSuccessAsync(Id);
+							_logger.LogInformation($"Task {Id} processed {response.Request.Url} successfully.");
+						}
+						else
+						{
+							if (RetryWhenResultIsEmpty)
+							{
+								await _statisticsService.IncrementFailedAsync(Id);
+								_logger.LogInformation($"Task {Id} failed to process {response.Request.Url}, parsing result is empty.");
+							}
+							else
+							{
+								await _statisticsService.IncrementSuccessAsync(Id);
+								_logger.LogInformation($"Task {Id} processed {response.Request.Url} succeeded, parsing result is empty.");
+							}
+						}
+					}
+					catch (Exception e)
+					{
+						await _statisticsService.IncrementFailedAsync(Id);
+						_logger.LogInformation($"Task {Id} failed to process {response.Request.Url}: {e}");
+					}
+				});
+
+				// TODO: 此处需要优化
+				// Need to optimize here
+				var retryResponses =
+					responses.Where(x => !x.Success && x.Request.RetriedTimes < RetryDownloadTimes)
+						.ToList();
+				var downloadFailedResponses =
+					responses.Where(x => !x.Success)
+						.ToList();
+				var failedResponses =
+					responses.Where(x => !x.Success && x.Request.RetriedTimes >= RetryDownloadTimes)
+						.ToList();
+
+				if (retryResponses.Count > 0)
+				{
+					retryResponses.ForEach(x =>
+					{
+						x.Request.RetriedTimes++;
+						_logger.LogInformation($"Task {Id} Download {x.Request.Url} failed: {x.Exception}");
+					});
+					await EnqueueRequests(retryResponses.Select(x => x.Request).ToArray());
+				}
+
+				// Statistical download failed
+				if (downloadFailedResponses.Count > 0)
+				{
+					var elapsedMilliseconds = downloadFailedResponses.Sum(x => x.ElapsedMilliseconds);
+					await _statisticsService.IncrementDownloadFailedAsync(agentId,
+						downloadFailedResponses.Count, elapsedMilliseconds);
+				}
+
+				// Statistical failure
+				if (failedResponses.Count > 0)
+				{
+					await _statisticsService.IncrementFailedAsync(Id, failedResponses.Count);
+				}
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError($"Task {Id} processing message {message} failed: {ex}");
+			}
+		}
+
+
 		/// <summary>
-		/// 阻塞等待直到爬虫结束
+		/// Block waiting until the crawler ends
 		/// </summary>
 		/// <returns></returns>
 		private async Task WaitForExiting()
@@ -859,13 +1096,13 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 判断爬虫是否正在运行
+		/// Determine if the crawler is running
 		/// </summary>
 		private void CheckIfRunning()
 		{
 			if (Status == Status.Running || Status == Status.Paused)
 			{
-				throw new SpiderException("任务 {Id} 正在运行");
+				throw new SpiderException($"Task {Id} is running");
 			}
 		}
 
@@ -879,7 +1116,7 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 把当前缓存的所有 Request 入队
+		/// Enqueue all currently cached Requests
 		/// </summary>
 		[MethodImpl(MethodImplOptions.Synchronized)]
 		private void EnqueueRequests()
@@ -890,7 +1127,7 @@ namespace DotnetSpider
 
 			var count = _scheduler.Enqueue(_requests);
 			_statisticsService.IncrementTotalAsync(Id, count).ConfigureAwait(false).GetAwaiter();
-			_logger.LogInformation($"任务 {Id} 推送请求到调度器，数量 {_requests.Count}");
+			_logger.LogInformation($"Task {Id} push request to scheduler, quantity: {_requests.Count}");
 			_requests.Clear();
 		}
 
@@ -903,9 +1140,13 @@ namespace DotnetSpider
 					request.CreationTime = DateTime.Now;
 				}
 
-				await _mq.PublishAsync(Framework.DownloaderCenterTopic,
-					$"|{Framework.DownloadCommand}|{JsonConvert.SerializeObject(requests)}");
-
+				if (_dmq == null)
+				{
+					await _mq.PublishAsync(Framework.DownloaderCenterTopic,
+						$"|{Framework.DownloadCommand}|{JsonConvert.SerializeObject(requests)}");
+				}
+				else
+					await _dmq.PublishAsync(Framework.DownloaderCenterTopic, Framework.DownloadCommand, requests);
 				foreach (var request in requests)
 				{
 					_enqueuedRequestDict.TryAdd(request.Hash, request);

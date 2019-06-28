@@ -18,6 +18,7 @@ namespace DotnetSpider
 
 		private readonly List<IDataFlow> _dataFlows = new List<IDataFlow>();
 		private readonly IMessageQueue _mq;
+		private readonly IDynamicMessageQueue _dmq;
 		private readonly ILogger _logger;
 		private readonly IStatisticsService _statisticsService;
 		private readonly List<IRequestSupply> _requestSupplies = new List<IRequestSupply>();
@@ -35,9 +36,11 @@ namespace DotnetSpider
 		private int _retryDownloadTimes = 5;
 		private int _statisticsInterval = 5;
 		private double _speed = 1;
+	
 		private int _speedControllerInterval = 1000;
 		private int _dequeueBatchCount = 1;
 		private int _depth = int.MaxValue;
+		private int _pageLimit = int.MaxValue;
 		private string _id;
 		private bool _retryWhenResultIsEmpty;
 		private bool _mmfSignal;
@@ -48,6 +51,10 @@ namespace DotnetSpider
 		/// </summary>
 		public DownloaderSettings DownloaderSettings { get; set; } = new DownloaderSettings();
 
+		/// <summary>
+		/// Limit Number of Pages to crawl.
+		/// </summary>
+		public int PageLimit { get => _pageLimit; set { _pageLimit = value; } }
 		/// <summary>
 		/// 遍历深度
 		/// </summary>
@@ -68,7 +75,7 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 是否支持通过 MMF 操作爬虫
+		/// Whether to support crawlers through MMF operations
 		/// </summary>
 		public bool MmfSignal
 		{
@@ -118,7 +125,7 @@ namespace DotnetSpider
 		}
 
 		/// <summary>
-		/// 每秒尝试下载多少个请求
+		/// How many requests to try to download per second
 		/// </summary>
 		public double Speed
 		{

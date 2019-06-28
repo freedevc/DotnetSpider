@@ -23,6 +23,7 @@ namespace DotnetSpider.Downloader
 		private bool _isRunning;
 
 		private readonly IMessageQueue _mq;
+		private readonly IDynamicMessageQueue _dmq;
 		private readonly IDownloaderAllocator _downloaderAllocator;
 		private readonly IDownloaderAgentOptions _options;
 		private const string DownloaderPersistFolderName = "downloaders";
@@ -50,11 +51,13 @@ namespace DotnetSpider.Downloader
 		/// <param name="logger">日志接口</param>
 		protected DownloaderAgentBase(
 			IDownloaderAgentOptions options,
+			IDynamicMessageQueue dmq,
 			IMessageQueue mq,
 			IDownloaderAllocator downloaderAllocator,
 			NetworkCenter networkCenter,
 			ILogger logger)
 		{
+			_dmq = dmq;
 			_mq = mq;
 			_downloaderAllocator = downloaderAllocator;
 			_options = options;
@@ -76,12 +79,12 @@ namespace DotnetSpider.Downloader
 		{
 			if (_isRunning)
 			{
-				throw new SpiderException($"下载器代理 {_options.AgentId} 正在运行中");
+				throw new SpiderException($"Downloader agent {_options.AgentId} is running");
 			}
 
 			_isRunning = true;
 
-			// 加载并初始化未释放的下载器
+			// Load and initialize the unreleased downloader
 			await LoadDownloaderAsync();
 
 			// 注册节点
@@ -100,6 +103,8 @@ namespace DotnetSpider.Downloader
 			// 订阅节点
 			SubscribeMessage();
 
+			// Subscribe to handle message from Dynamic Message Queue
+			SubscribeDynamicMessage();
 			// 开始心跳
 			HeartbeatAsync().ConfigureAwait(false).GetAwaiter();
 
@@ -112,6 +117,8 @@ namespace DotnetSpider.Downloader
 		public Task StopAsync(CancellationToken cancellationToken)
 		{
 			_mq.Unsubscribe(_options.AgentId);
+			if(_dmq != null)
+				_dmq.Unsubscribe(_options.AgentId);
 			_isRunning = false;
 			Logger.LogInformation($"下载器代理 {_options.AgentId} 退出");
 #if NETFRAMEWORK
@@ -134,7 +141,7 @@ namespace DotnetSpider.Downloader
 						{
 							AgentId = _options.AgentId,
 							AgentName = _options.Name,
-							FreeMemory = (int) Framework.GetFreeMemory(),
+							FreeMemory = (ulong) Framework.GetFreeMemory(),
 							DownloaderCount = _cache.Count,
 							CreationTime = DateTime.Now
 						});
@@ -151,6 +158,51 @@ namespace DotnetSpider.Downloader
 			});
 		}
 
+		private Task DynamicDownloadAsync(dynamic message)
+		{
+			
+			var requests = message as Request[];// JsonConvert.DeserializeObject<Request[]>(message);
+			if(requests == null)
+			{
+				var request = message as Request;
+				if (request != null)
+					requests = new Request[] { request };
+			}
+			if (requests != null && requests.Length > 0)
+			{
+				// 超时 60 秒的不再下载 
+				// 下载中心下载请求批量传送，因此反序列化的请求需要按拥有者标号分组。
+				// For the same task should be sequential download. TODO: Because it is using multi-threading, is it guaranteed that the order will not be activated at this time?
+				var groupings = requests.Where(x => (DateTime.Now - x.CreationTime).TotalSeconds < 60)
+					.GroupBy(x => x.OwnerId).ToDictionary(x => x.Key, y => y.ToList());
+				foreach (var grouping in groupings)
+				{
+					foreach (var request in grouping.Value)
+					{
+						Task.Factory.StartNew(async () =>
+						{
+							var response = await DownloadAsync(request);
+							if (response != null)
+							{
+								await _dmq.PublishAsync($"{Framework.ResponseHandlerTopic}{grouping.Key}", Framework.DownloadCommand,
+									new Response[] { response });
+							}
+						}).ConfigureAwait(false).GetAwaiter();
+					}
+				}
+			}
+			else
+			{
+				Logger.LogWarning("下载请求数: 0");
+			}
+
+#if NETFRAMEWORK
+			return DotnetSpider.Core.Framework.CompletedTask;
+#else
+			return Task.CompletedTask;
+#endif
+		}
+
 		private Task DownloadAsync(string message)
 		{
 			var requests = JsonConvert.DeserializeObject<Request[]>(message);
@@ -159,7 +211,7 @@ namespace DotnetSpider.Downloader
 			{
 				// 超时 60 秒的不再下载 
 				// 下载中心下载请求批量传送，因此反序列化的请求需要按拥有者标号分组。
-				// 对于同一个任务应该是顺序下载。TODO: 因为是使用多线程，是否此时保证顺序并不会启作用？
+				// For the same task should be sequential download. TODO: Because it is using multi-threading, is it guaranteed that the order will not be activated at this time?
 				var groupings = requests.Where(x => (DateTime.Now - x.CreationTime).TotalSeconds < 60)
 					.GroupBy(x => x.OwnerId).ToDictionary(x => x.Key, y => y.ToList());
 				foreach (var grouping in groupings)
@@ -172,7 +224,9 @@ namespace DotnetSpider.Downloader
 							if (response != null)
 							{
 								await _mq.PublishAsync($"{Framework.ResponseHandlerTopic}{grouping.Key}",
-									JsonConvert.SerializeObject(new[] {response}));
+									JsonConvert.SerializeObject(new[] { response }));
+								//await _dmq.PublishAsync($"{Framework.ResponseHandlerTopic}{grouping.Key}", Framework.DownloadCommand,
+								//	new Response[] {response});
 							}
 						}).ConfigureAwait(false).GetAwaiter();
 					}
@@ -297,6 +351,25 @@ namespace DotnetSpider.Downloader
 			}
 		}
 
+		private void SubscribeDynamicMessage()
+		{
+			if (_dmq == null) return;
+			while (true)
+			{
+				try
+				{
+					_dmq.Subscribe(_options.AgentId, HandleDynamicMessage);
+					Logger.LogInformation($"订阅节点 {_options.AgentId} 推送请求成功");
+					return;
+				}
+				catch (Exception e)
+				{
+					Logger.LogError($"订阅节点 {_options.AgentId} 推送请求结果失败: {e.Message}");
+					Thread.Sleep(1000);
+				}
+			}
+		}
+
 		private async Task HandleMessage(string message)
 		{
 			if (string.IsNullOrWhiteSpace(message))
@@ -341,6 +414,45 @@ namespace DotnetSpider.Downloader
 						Logger.LogError($"下载器代理 {_options.AgentId} 无法处理消息: {message}");
 						break;
 					}
+				}
+			}
+			catch (Exception e)
+			{
+				Logger.LogError($"下载器代理 {_options.AgentId} 处理消息: {message} 失败, 异常: {e}");
+			}
+		}
+
+		private async Task HandleDynamicMessage(string cmd, dynamic message)
+		{
+			if (message == null)
+			{
+				Logger.LogWarning($"下载器代理 {_options.AgentId} 接收到空消息");
+				return;
+			}
+#if DEBUG
+
+			Logger.LogDebug($"下载器代理 {_options.AgentId} 接收到消息: {message}");
+#endif
+
+			try
+			{
+				switch (cmd)
+				{
+					case Framework.DownloadCommand:
+						{
+							await DynamicDownloadAsync(message);
+							break;
+						}
+					case Framework.ExitCommand:
+						{
+							await StopAsync(default);
+							break;
+						}
+					default:
+						{
+							Logger.LogError($"下载器代理 {_options.AgentId} 无法处理消息: {message}");
+							break;
+						}
 				}
 			}
 			catch (Exception e)

@@ -36,6 +36,7 @@ namespace DotnetSpider.Core
 
 		public const string AllocateDownloaderCommand = "Allocate";
 		public const string DownloadCommand = "Download";
+		public const string DownloadCompleteCommand = "DownloadComplete";
 		public const string RegisterCommand = "Register";
 		public const string HeartbeatCommand = "Heartbeat";
 		public const string ExitCommand = "Exit";
@@ -48,7 +49,7 @@ namespace DotnetSpider.Core
 
 		public static string ChromeDriverPath;
 		public static readonly bool IsServer2008;
-		public static readonly int TotalMemory;
+		public static readonly ulong TotalMemory;
 		public static readonly string IpAddress;
 		public static readonly string OsDescription;
 		public static WebProxy FiddlerProxy = new WebProxy("http://127.0.0.1:8888");
@@ -65,15 +66,15 @@ namespace DotnetSpider.Core
 			{
 				var mStatus = new MemoryStatus();
 				GlobalMemoryStatus(ref mStatus);
-				TotalMemory = (int) (Convert.ToInt64(mStatus.DwTotalPhys) / 1024 / 1024);
+				TotalMemory = (ulong) (Convert.ToUInt64(mStatus.DwTotalPhys) / 1024 / 1024);
 			}
 			else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 			{
 				var lines = File.ReadAllLines("/proc/meminfo");
 				var infoDic = lines
 					.Select(line => line.Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries).Take(2).ToList())
-					.ToDictionary(items => items[0], items => long.Parse(items[1]));
-				TotalMemory = (int) (infoDic["MemTotal:"] / 1024);
+					.ToDictionary(items => items[0], items => ulong.Parse(items[1]));
+				TotalMemory = (ulong) (infoDic["MemTotal:"] / 1024);
 			}
 			else
 			{
@@ -91,20 +92,20 @@ namespace DotnetSpider.Core
 			OsDescription = $"{Environment.OSVersion.Platform} {Environment.OSVersion.Version}";
 		}
 
-		public static long GetFreeMemory()
+		public static ulong GetFreeMemory()
 		{
 			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 			{
 				var mStatus = new MemoryStatus();
 				GlobalMemoryStatus(ref mStatus);
-				return Convert.ToInt64(mStatus.DwAvailPhys) / 1024 / 1024;
+				return Convert.ToUInt64(mStatus.DwAvailPhys) / 1024 / 1024;
 			}
 			else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 			{
 				var lines = File.ReadAllLines("/proc/meminfo");
 				var infoDic = lines
 					.Select(line => line.Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries).Take(2).ToList())
-					.ToDictionary(items => items[0], items => long.Parse(items[1]));
+					.ToDictionary(items => items[0], items => ulong.Parse(items[1]));
 				var free = infoDic["MemFree:"];
 				var sReclaimable = infoDic["SReclaimable:"];
 				return (free + sReclaimable) / 1024;

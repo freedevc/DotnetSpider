@@ -56,7 +56,8 @@ namespace DotnetSpider.Sample.samples
 			}
 		}
 
-		public DatabaseSpider(IMessageQueue mq, IStatisticsService statisticsService, ISpiderOptions options, ILogger<Spider> logger, IServiceProvider services) : base(mq, statisticsService, options, logger, services)
+		public DatabaseSpider(IDynamicMessageQueue dmq, IMessageQueue mq, IStatisticsService statisticsService, ISpiderOptions options, ILogger<Spider> logger, IServiceProvider services) 
+		: base(dmq, mq, statisticsService, options, logger, services)
 		{
 		}
 	}

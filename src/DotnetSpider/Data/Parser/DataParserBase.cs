@@ -13,41 +13,41 @@ namespace DotnetSpider.Data.Parser
 	public abstract class DataParserBase : DataFlowBase
 	{
 		/// <summary>
-		/// 判断当前请求是否可以解析
+		/// Determine if the current request can be parsed
 		/// </summary>
 		public Func<Request, bool> CanParse { get; set; }
 
 		/// <summary>
-		/// 查询当前请求的下一级请求
+		/// Query the next request of the current request
 		/// </summary>
 		public Func<DataFlowContext, List<string>> QueryFollowRequests { get; set; }
 
 		/// <summary>
-		/// 选择器的生成方法
+		/// Selector generation method
 		/// </summary>
 		public Func<DataFlowContext, ISelectable> SelectableFactory { get; set; }
 
 		/// <summary>
-		/// 数据解析
+		/// Data analysis
 		/// </summary>
-		/// <param name="context">处理上下文</param>
+		/// <param name="context">Processing context</param>
 		/// <returns></returns>
 		public override async Task<DataFlowResult> HandleAsync(DataFlowContext context)
 		{
 			if (context?.Response == null)
 			{
-				Logger?.LogError("数据上下文或者响应内容为空");
+				Logger?.LogError("Data context or response content is empty");
 				return DataFlowResult.Failed;
 			}
 
 			try
 			{
-				// 如果不匹配则跳过，不影响其它数据流处理器的执行
+				// Skip if not matched, does not affect the execution of other data stream processors
 				if (CanParse != null && !CanParse(context.Response.Request))
 				{
 					return DataFlowResult.Success;
 				}
-
+				// [Doanh]: call this first to initialize _selectable Instance for the context.
 				SelectableFactory?.Invoke(context);
 
 				var parserResult = await Parse(context);
@@ -98,14 +98,15 @@ namespace DotnetSpider.Data.Parser
 		}
 
 		/// <summary>
-		/// 创建当前请求的下一级请求
+		/// Create the next level request for the current request
 		/// </summary>
-		/// <param name="current">当前请求</param>
-		/// <param name="url">下一级请求</param>
+		/// <param name="current">Current request</param>
+		/// <param name="url">Next level request</param>
 		/// <returns></returns>
 		protected virtual Request CreateFromRequest(Request current, string url)
 		{
 			// TODO: 确认需要复制哪些字段
+			// TODO: Confirm which fields need to be copied
 			var request = new Request(url, current.GetProperties())
 			{
 				Url = url,
@@ -114,7 +115,8 @@ namespace DotnetSpider.Data.Parser
 				Method = current.Method,
 				AgentId = current.AgentId,
 				RetriedTimes = 0,
-				OwnerId = current.OwnerId
+				OwnerId = current.OwnerId,
+				PageIndex = current.PageIndex
 			};
 			return request;
 		}
@@ -131,9 +133,9 @@ namespace DotnetSpider.Data.Parser
 		}
 
 		/// <summary>
-		/// 数据解析
+		/// Parses 
 		/// </summary>
-		/// <param name="context">处理上下文</param>
+		/// <param name="context">DataFlow Context</param>
 		/// <returns></returns>
 		protected abstract Task<DataFlowResult> Parse(DataFlowContext context);
 	}

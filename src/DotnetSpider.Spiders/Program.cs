@@ -59,7 +59,7 @@ namespace DotnetSpider.Spiders
 
 				Log.Logger.Information($"获取爬虫类型 {type.FullName} 成功");
 				builder.ConfigureAppConfiguration(configuration);
-				builder.UserKafka();
+				builder.UseLocalMessageQueue();//.UserKafka();
 				builder.AddSpider(type);
 				var provider = builder.Build();
 

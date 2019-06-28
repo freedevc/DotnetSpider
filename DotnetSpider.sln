@@ -1,41 +1,48 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotnetSpider", "src\DotnetSpider\DotnetSpider.csproj", "{2479A45A-4592-4AF4-8115-E615CF34CC98}"
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.489
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotnetSpider", "src\DotnetSpider\DotnetSpider.csproj", "{2479A45A-4592-4AF4-8115-E615CF34CC98}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9F210716-DEEC-4671-86C4-F5CA867E907B}"
-ProjectSection(SolutionItems) = preProject
-	DESIGN.md = DESIGN.md
-	.editorconfig = .editorconfig
-	.gitignore = .gitignore
-	LICENSE = LICENSE
-	README.md = README.md
-	runtests.sh = runtests.sh
-	azure-pipelines.yml = azure-pipelines.yml
-EndProjectSection
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		.gitignore = .gitignore
+		azure-pipelines.yml = azure-pipelines.yml
+		DESIGN.md = DESIGN.md
+		LICENSE = LICENSE
+		README.md = README.md
+		runtests.sh = runtests.sh
+	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotnetSpider.Portal", "src\DotnetSpider.Portal\DotnetSpider.Portal.csproj", "{F0693338-09F0-43D2-9DAF-59BB323EF0B6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotnetSpider.Portal", "src\DotnetSpider.Portal\DotnetSpider.Portal.csproj", "{F0693338-09F0-43D2-9DAF-59BB323EF0B6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotnetSpider.Tests", "tests\DotnetSpider.Tests\DotnetSpider.Tests.csproj", "{32A4F6B5-0377-4353-BF06-A0E7328CBB9C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotnetSpider.Tests", "tests\DotnetSpider.Tests\DotnetSpider.Tests.csproj", "{32A4F6B5-0377-4353-BF06-A0E7328CBB9C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{31B052DB-A9AA-49F5-AE8C-1660546A8903}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotnetSpider.Sample", "src\DotnetSpider.Sample\DotnetSpider.Sample.csproj", "{E3DEC5C0-D82B-456E-AFBC-8019273ACD6D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotnetSpider.Sample", "src\DotnetSpider.Sample\DotnetSpider.Sample.csproj", "{E3DEC5C0-D82B-456E-AFBC-8019273ACD6D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotnetSpider.ExcelExpression", "src\DotnetSpider.ExcelExpression\DotnetSpider.ExcelExpression.csproj", "{A1AD2BFD-F0D0-4EB1-836B-98BE6E5BF56C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotnetSpider.ExcelExpression", "src\DotnetSpider.ExcelExpression\DotnetSpider.ExcelExpression.csproj", "{A1AD2BFD-F0D0-4EB1-836B-98BE6E5BF56C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotnetSpider.Mongo", "src\DotnetSpider.Mongo\DotnetSpider.Mongo.csproj", "{0DFD28D7-E0E8-4F81-84E9-DB6EA497F08C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotnetSpider.Mongo", "src\DotnetSpider.Mongo\DotnetSpider.Mongo.csproj", "{0DFD28D7-E0E8-4F81-84E9-DB6EA497F08C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotnetSpider.Kafka", "src\DotnetSpider.Kafka\DotnetSpider.Kafka.csproj", "{AC87EA41-A0EF-4FCD-8230-5CAA76BEC847}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotnetSpider.Kafka", "src\DotnetSpider.Kafka\DotnetSpider.Kafka.csproj", "{AC87EA41-A0EF-4FCD-8230-5CAA76BEC847}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotnetSpider.Postgre", "src\DotnetSpider.Postgre\DotnetSpider.Postgre.csproj", "{62069E7E-47BE-467F-87CA-233555C5C45E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotnetSpider.Postgre", "src\DotnetSpider.Postgre\DotnetSpider.Postgre.csproj", "{62069E7E-47BE-467F-87CA-233555C5C45E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotnetSpider.DownloaderAgent", "src\DotnetSpider.DownloaderAgent\DotnetSpider.DownloaderAgent.csproj", "{9AE48371-40AA-4E27-804A-27EFD9AEA1EC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotnetSpider.DownloaderAgent", "src\DotnetSpider.DownloaderAgent\DotnetSpider.DownloaderAgent.csproj", "{9AE48371-40AA-4E27-804A-27EFD9AEA1EC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotnetSpider.DownloadCenter", "src\DotnetSpider.DownloadCenter\DotnetSpider.DownloadCenter.csproj", "{80A42EC2-31E5-47EF-9751-3AD5172B5CDF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotnetSpider.DownloadCenter", "src\DotnetSpider.DownloadCenter\DotnetSpider.DownloadCenter.csproj", "{80A42EC2-31E5-47EF-9751-3AD5172B5CDF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DockerClient", "src\DockerClient\DockerClient.csproj", "{E07CEB85-A0E6-4F07-AB31-FB6FF6584830}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DockerClient", "src\DockerClient\DockerClient.csproj", "{E07CEB85-A0E6-4F07-AB31-FB6FF6584830}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotnetSpider.Spiders", "src\DotnetSpider.Spiders\DotnetSpider.Spiders.csproj", "{C07ACDE1-1E56-4ACD-8F63-50C708F7D25C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotnetSpider.Spiders", "src\DotnetSpider.Spiders\DotnetSpider.Spiders.csproj", "{C07ACDE1-1E56-4ACD-8F63-50C708F7D25C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotnetSpider.Sample452", "DotnetSpider.Sample452\DotnetSpider.Sample452.csproj", "{E67167CB-4A49-4E9F-90C1-B4A84A60C38F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample452", "Sample452\Sample452.csproj", "{C1386152-5E1A-44AC-8B26-F0DD01B039A5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -91,8 +98,22 @@ Global
 		{C07ACDE1-1E56-4ACD-8F63-50C708F7D25C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C07ACDE1-1E56-4ACD-8F63-50C708F7D25C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C07ACDE1-1E56-4ACD-8F63-50C708F7D25C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E67167CB-4A49-4E9F-90C1-B4A84A60C38F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E67167CB-4A49-4E9F-90C1-B4A84A60C38F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E67167CB-4A49-4E9F-90C1-B4A84A60C38F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E67167CB-4A49-4E9F-90C1-B4A84A60C38F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C1386152-5E1A-44AC-8B26-F0DD01B039A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1386152-5E1A-44AC-8B26-F0DD01B039A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1386152-5E1A-44AC-8B26-F0DD01B039A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1386152-5E1A-44AC-8B26-F0DD01B039A5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{32A4F6B5-0377-4353-BF06-A0E7328CBB9C} = {31B052DB-A9AA-49F5-AE8C-1660546A8903}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {37193E06-22B2-4771-8891-C495E30C09FC}
 	EndGlobalSection
 EndGlobal

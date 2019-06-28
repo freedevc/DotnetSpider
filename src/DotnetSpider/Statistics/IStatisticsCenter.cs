@@ -1,4 +1,4 @@
-#if !NET451
+#if !NETFRAMEWORK
 using Microsoft.Extensions.Hosting;
 
 #else

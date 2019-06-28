@@ -127,6 +127,7 @@ namespace DotnetSpider
 		public static DotnetSpiderBuilder UseLocalMessageQueue(this DotnetSpiderBuilder builder)
 		{
 			builder.Services.AddSingleton<IMessageQueue, LocalMessageQueue>();
+	//		builder.Services.AddSingleton<IDynamicMessageQueue, LocalDynamicMessageQueue>();
 			return builder;
 		}
 
@@ -141,7 +142,7 @@ namespace DotnetSpider
 
 			builder.Services.AddSingleton<IDownloaderAllocator, DownloaderAllocator>();
 			builder.Services.AddSingleton<IDownloaderAgent, DefaultDownloaderAgent>();
-			builder.Services.AddSingleton<NetworkCenter>();
+	//		builder.Services.AddSingleton<NetworkCenter>();
 			builder.Services.AddScoped<IDownloaderAgentOptions, DownloaderAgentOptions>();
 
 			AgentBuilder spiderAgentBuilder = new AgentBuilder(builder.Services);

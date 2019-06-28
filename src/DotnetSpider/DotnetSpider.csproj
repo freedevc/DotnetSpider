@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>netstandard2.0;net451;</TargetFrameworks>
+        <TargetFrameworks>netstandard2.0;net452;</TargetFrameworks>
         <LangVersion>latest</LangVersion>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
@@ -17,7 +17,7 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <PackageLicenseUrl>https://raw.githubusercontent.com/dotnetcore/DotnetSpider/master/LICENSE</PackageLicenseUrl>
     </PropertyGroup>
-    <ItemGroup Condition=" '$(TargetFramework)' == 'net451' ">
+    <ItemGroup Condition=" '$(TargetFramework)' != 'netstandard2.0' ">
         <Reference Include="System.Web" />
         <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="1.1.2" />
         <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="1.1.2" />
@@ -34,7 +34,6 @@
         <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="2.2.0" />
         <PackageReference Include="System.Text.Encoding.CodePages" Version="4.5.1" />
         <PackageReference Include="Serilog.AspNetCore" Version="2.1.1" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="2.2.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.2.0" />
     </ItemGroup>
     <ItemGroup>
@@ -63,6 +62,12 @@
 
     <ItemGroup>
         <Folder Include="HtmlAgilityPack.Css" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+      <PackageReference Include="Microsoft.Extensions.Hosting">
+        <Version>2.2.0</Version>
+      </PackageReference>
     </ItemGroup>
 
 </Project>

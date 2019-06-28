@@ -51,7 +51,9 @@ namespace DotnetSpider.Sample.samples
             var options = provider.GetRequiredService<ISpiderOptions>();
             spider.AddDataFlow(new CnblogsDataParser()).AddDataFlow(new MongoEntityStorage(options.StorageConnectionString));
             spider.AddRequests("http://www.cnblogs.com/"); // 设置起始链接
-            return spider.RunAsync(); // 启动
+			
+
+			return spider.RunAsync(); // 启动
         }
 
         class CnblogsDataParser : DataParser

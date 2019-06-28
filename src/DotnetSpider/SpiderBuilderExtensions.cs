@@ -64,6 +64,7 @@ namespace DotnetSpider
 		public static SpiderBuilder UseLocalMessageQueue(this SpiderBuilder builder)
 		{
 			builder.Services.AddSingleton<IMessageQueue, LocalMessageQueue>();
+		//	builder.Services.AddSingleton<IDynamicMessageQueue, LocalDynamicMessageQueue>();
 			return builder;
 		}
 

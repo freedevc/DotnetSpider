@@ -8,7 +8,7 @@ namespace DotnetSpider
 	/// 爬虫状态
 	/// </summary>
 	[Flags]
-#if !NET451
+#if !NETFRAMEWORK
 	[JsonConverter(typeof(StringEnumConverter))]
 #endif
 	public enum Status
