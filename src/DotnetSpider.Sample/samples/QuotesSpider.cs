@@ -5,7 +5,6 @@ using DotnetSpider.Data.Parser;
 using DotnetSpider.Data.Storage;
 using DotnetSpider.Downloader;
 using DotnetSpider.MessageQueue;
-using DotnetSpider.Sample.samples.HtmlFileStorage;
 using DotnetSpider.Scheduler;
 using DotnetSpider.Statistics;
 using Microsoft.Extensions.Logging;
@@ -15,10 +14,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using DotnetSpider.Sample;
+
 namespace Sample452
 {
 	public class VnexpressSpider : Spider
 	{
+		private ProjectDefinition _definition;
 		public static Task Run()
 		{
 			//var spider = Create<VnexpressSpider>();
@@ -26,9 +28,22 @@ namespace Sample452
 			builder.AddSerilog();
 			builder.ConfigureAppConfiguration();
 			builder.UseStandalone();
+			var settings = new ProjectDefinition()
+			{
+				ProjectName = "Vnexpress Spider",
+				Site = "Vnexpress/Kinh Doanh",
+				ItemUrlsSelector = "",
+				Urls = "https://vnexpress.net/kinh-doanh",
+				FileFormat = "*.html",
+				FileStorage = @"P:\Neil.Test\Spider Storage\Vnexpress",
+				PageLimit = 4,
+				
+			};
+			builder.Services.AddSingleton<ProjectDefinition>(settings);
 			builder.AddSpider<VnexpressSpider>();
-			builder.Services.AddSingleton<IDynamicMessageQueue, InMemoryMessageQueue>((s)=> null);
-			//builder.Services.AddSingleton<IDynamicMessageQueue>(null as IDynamicMessageQueue);
+			//	builder.Services.AddSingleton<IDynamicMessageQueue, InMemoryMessageQueue>((s)=> null);
+			//builder.Services.AddSingleton<IDynamicMessageQueue,InMemoryMessageQueue>();
+			builder.UseDynamicMessageQueue();
 			var factory = builder.Build();
 			var spider = factory.Create<VnexpressSpider>();
 			return spider.RunAsync();
@@ -37,11 +52,13 @@ namespace Sample452
 		{
 			NewGuidId();
 			Scheduler = new QueueDistinctBfsScheduler();
+
 			Speed = 5;
 			Depth = 2;
 			PageLimit = 2;
+		//	DownloaderSettings.
 			DownloaderSettings.Type = DownloaderType.HttpClient;
-			AddDataFlow(new VnexpressItemLinksDataParser()).AddDataFlow(new HtmlFileStorage()).AddDataFlow(new VnexpressPaginationDataParser());
+			AddDataFlow(new VnexpressItemLinksDataParser()).AddDataFlow(new HtmlFileStorage(_definition)).AddDataFlow(new VnexpressPaginationDataParser());
 			AddRequests(new string[] { "https://vnexpress.net/kinh-doanh" });
 			//AddRequests(new string[] { "https://vnexpress.net/kinh-doanh", "https://vnexpress.net/the-gioi", "https://vnexpress.net/goc-nhin", "https://vnexpress.net/the-thao", "https://vnexpress.net/phap-luat", "https://vnexpress.net/giao-duc" });
 		}
@@ -123,13 +140,14 @@ namespace Sample452
 			}
 		}
 
-		public VnexpressSpider( IMessageQueue mq, IStatisticsService statisticsService,
-			ISpiderOptions options, ILogger<Spider> logger, IServiceProvider services) : base(null, mq, statisticsService, options, logger, services)
-		{
-		}
-		//public VnexpressSpider(IDynamicMessageQueue dmq, IMessageQueue mq, IStatisticsService statisticsService,
-		//	ISpiderOptions options, ILogger<Spider> logger, IServiceProvider services) : base(dmq, mq, statisticsService, options, logger, services)
+		//public VnexpressSpider( IMessageQueue mq, IStatisticsService statisticsService,
+		//	ISpiderOptions options, ILogger<Spider> logger, IServiceProvider services) : base(null, mq, statisticsService, options, logger, services)
 		//{
 		//}
+		public VnexpressSpider(ProjectDefinition definition, IDynamicMessageQueue dmq, IMessageQueue mq, IStatisticsService statisticsService,
+			ISpiderOptions options, ILogger<Spider> logger, IServiceProvider services) : base(dmq, mq, statisticsService, options, logger, services)
+		{
+			_definition = definition;
+		}
 	}
 }

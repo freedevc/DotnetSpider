@@ -73,12 +73,15 @@ namespace DotnetSpider.Downloader
 			}
 
 			var key = $"{proxy.Address.Host}:{proxy.Address.Port}";
-			if (!_proxies.ContainsKey(key))
+			Proxy p = null;
+			lock (_proxyQueueLocker)
 			{
-				return;
+				if (!_proxies.ContainsKey(key))
+				{
+					return;
+				}
+				p=_proxies[key];
 			}
-
-			Proxy p = _proxies[key];
 			switch (statusCode)
 			{
 				case HttpStatusCode.OK:
@@ -104,9 +107,14 @@ namespace DotnetSpider.Downloader
 			{
 				return;
 			}
-
-			if (ProxyValidator != null && p.FailedNum % 3 == 0 && ProxyValidator.IsAvailable(proxy))
+			// [Doanh]: Fixed to check if not available to remove the Proxy from the dict.
+			if (ProxyValidator != null && p.FailedNum % 3 == 0 && !ProxyValidator.IsAvailable(proxy))
+			//if (ProxyValidator != null && p.FailedNum % 3 == 0 && ProxyValidator.IsAvailable(proxy))
 			{
+				lock (_proxyQueueLocker)
+				{
+					_proxies.Remove(key);
+				}
 				return;
 			}
 
@@ -156,7 +164,15 @@ namespace DotnetSpider.Downloader
 					{
 						threadCommonPool.QueueUserWork(item =>
 						{
-							if (!_proxies.ContainsKey(item.Key))
+							var px = (Proxy)item.Value;
+							var proxyKey = $"{ px.WebProxy.Address.Host}:{ px.WebProxy.Address.Port}";
+							bool isExisting = false;
+							lock(_proxyQueueLocker)
+							{
+								isExisting = _proxies.ContainsKey(proxyKey);
+							}
+
+							if (!isExisting)
 							{
 								if (ProxyValidator.IsAvailable(item.Value.WebProxy))
 								{
@@ -165,10 +181,13 @@ namespace DotnetSpider.Downloader
 
 									lock (_proxyQueueLocker)
 									{
-										_proxyQueue.Add(item.Value);
+										if (!_proxies.ContainsKey(proxyKey))
+										{
+											_proxyQueue.Add(item.Value);
+											_proxies.Add(proxyKey, item.Value);
+										}
 									}
-
-									_proxies.Add(item.Key, item.Value);
+									
 								}
 							}
 						}, proxy);

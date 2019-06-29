@@ -12,14 +12,15 @@ namespace DotnetSpider.Sample
 		static async Task Main(string[] args)
 		{
 			Console.Title = $"Spider: " + Process.GetCurrentProcess().Id.ToString();
-			ServicePointManager.DefaultConnectionLimit = int.MaxValue;
+			//ServicePointManager.DefaultConnectionLimit = int.MaxValue;
 			//	ServicePointManager.EnableDnsRoundRobin = true;
 			//ServicePointManager.ReusePort = true;
 			//await BaseUsage.Run();
 			//			await GithubSpider.Run();
 			//Task.Run(async () =>
-		//	{
-				await VnexpressSpider.Run();
+			//	{
+			await HttpClientSpider.Run();
+					//await VnexpressSpider.Run();
 			//	var temp = true;
 		//	});
 			//Task.Run(async () =>
@@ -27,7 +28,7 @@ namespace DotnetSpider.Sample
 			//	await GithubSpider.Run();
 			//});
 			//await DistributedSpider.Run(); 
-		//	Console.Read();
+			Console.Read();
 		}
 
 		static Task Write(string msg)

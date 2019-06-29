@@ -131,6 +131,13 @@ namespace DotnetSpider
 			return builder;
 		}
 
+		public static DotnetSpiderBuilder UseDynamicMessageQueue(this DotnetSpiderBuilder builder)
+		{
+			//builder.Services.AddSingleton<IMessageQueue, LocalMessageQueue>();
+			builder.Services.AddSingleton<IDynamicMessageQueue, InMemoryMessageQueue>();
+			return builder;
+		}
+
 		#endregion
 
 		#region DownloaderAgent

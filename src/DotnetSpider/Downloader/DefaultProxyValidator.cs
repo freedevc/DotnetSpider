@@ -108,7 +108,7 @@ namespace DotnetSpider.Downloader
                 {
                     throw new ArgumentNullException(nameof(webProxy));
                 }
-
+			//	return HttpStatusCode.OK;
                 var httpProxy = webProxy as HttpProxy;
                 if (httpProxy == null)
                 {
@@ -142,7 +142,7 @@ namespace DotnetSpider.Downloader
                         int.Parse(Regex.Match(response, "(?<=HTTP/1.1 )\\d+", RegexOptions.IgnoreCase).Value);
                     return (HttpStatusCode) statusCode;
                 }
-                catch (Exception)
+                catch (Exception exx1)
                 {
                     return HttpStatusCode.ServiceUnavailable;
                 }

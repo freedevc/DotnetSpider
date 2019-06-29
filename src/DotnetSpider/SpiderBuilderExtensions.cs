@@ -68,6 +68,12 @@ namespace DotnetSpider
 			return builder;
 		}
 
+		public static SpiderBuilder UseDynamicMessageQueue(this SpiderBuilder builder)
+		{
+			builder.Services.AddSingleton<IDynamicMessageQueue, InMemoryMessageQueue>();
+			return builder;
+		}
+
 		public static SpiderBuilder AddSpider<T>(this SpiderBuilder builder) where T : Spider
 		{
 			builder.Services.AddTransient(typeof(T));

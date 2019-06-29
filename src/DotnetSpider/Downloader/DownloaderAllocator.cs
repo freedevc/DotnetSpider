@@ -12,16 +12,18 @@ namespace DotnetSpider.Downloader
 	{
 		private readonly ILoggerFactory _loggerFactory;
 		private readonly IDownloaderAgentOptions _options;
-
+		private readonly IProxyValidator _proxyValidator;
 		/// <summary>
 		/// 构造方法
 		/// </summary>
 		/// <param name="options">选项</param>
 		/// <param name="loggerFactory">日志接口工厂</param>
 		public DownloaderAllocator(
+			IProxyValidator proxyValidator,
 			IDownloaderAgentOptions options,
 			ILoggerFactory loggerFactory)
 		{
+			_proxyValidator = proxyValidator;
 			_loggerFactory = loggerFactory;
 			_options = options;
 		}
@@ -83,7 +85,10 @@ namespace DotnetSpider.Downloader
 						Logger = _loggerFactory.CreateLogger<HttpClientDownloader>(),
 						HttpProxyPool = string.IsNullOrWhiteSpace(_options.ProxySupplyUrl)
 							? null
-							: new HttpProxyPool(new HttpRowTextProxySupplier(_options.ProxySupplyUrl)),
+							: new HttpProxyPool(new HttpRowTextProxySupplier(_options.ProxySupplyUrl))
+							{
+								ProxyValidator = _proxyValidator
+							},
 						RetryTime = allotDownloaderMessage.RetryTimes
 					};
 					httpClient.AddCookies(allotDownloaderMessage.Cookies);
