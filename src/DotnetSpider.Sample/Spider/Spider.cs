@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using DotnetSpider.Core.Infrastructure;
+using System.Net;
 #if NETFRAMEWORK
 using System.Net;
 #else
@@ -25,17 +26,14 @@ using System.Text;
 
 #endif
 
-[assembly: InternalsVisibleTo("DotnetSpider.Core.Test")]
-[assembly: InternalsVisibleTo("DotnetSpider.Sample")]
-[assembly: InternalsVisibleTo("DotnetSpider.Extension")]
-[assembly: InternalsVisibleTo("DotnetSpider.Extension.Test")]
+
 
 namespace DotnetSpider.Core
 {
 	/// <summary>
 	/// A spider contains four modules: Downloader, Scheduler, PageProcessor and Pipeline. 
 	/// </summary>
-	public class Spider : AppBase, ISpider, ISpeedMonitor
+	public class SpiderBase : AppBase, ISpider, ISpeedMonitor
 	{
 		private IScheduler _scheduler = new QueueDuplicateRemovedScheduler();
 		private IDownloader _downloader = new HttpClientDownloader();
@@ -193,7 +191,7 @@ namespace DotnetSpider.Core
 		/// <summary>
 		/// Event of crawler on closed.
 		/// </summary>
-		public event Action<Spider, bool> OnClosed;
+		public event Action<SpiderBase, bool> OnClosed;
 
 		public readonly List<IBeforeProcessorHandler> BeforeProcessors = new List<IBeforeProcessorHandler>();
 
@@ -414,7 +412,7 @@ namespace DotnetSpider.Core
 		/// <summary>
 		/// 构造方法
 		/// </summary>
-		public Spider() : this(Guid.NewGuid().ToString("N"), new QueueDuplicateRemovedScheduler(), null,
+		public SpiderBase() : this(Guid.NewGuid().ToString("N"), new QueueDuplicateRemovedScheduler(), null,
 			null)
 		{
 		}
@@ -427,7 +425,7 @@ namespace DotnetSpider.Core
 		/// <param name="scheduler">调度队列</param>
 		/// <param name="pageProcessors">页面解析器</param>
 		/// <param name="pipelines">数据管道</param>
-		public Spider(string identity, IScheduler scheduler, IEnumerable<IPageProcessor> pageProcessors,
+		public SpiderBase(string identity, IScheduler scheduler, IEnumerable<IPageProcessor> pageProcessors,
 			IEnumerable<IPipeline> pipelines)
 		{
 			ThreadPool.SetMinThreads(256, 256);
@@ -480,13 +478,13 @@ namespace DotnetSpider.Core
 		/// <param name="pageProcessors">页面解析器</param>
 		/// <param name="scheduler">调度队列</param>
 		/// <returns>爬虫</returns>
-		public static Spider Create(string identify, IScheduler scheduler,
+		public static SpiderBase Create(string identify, IScheduler scheduler,
 			params IPageProcessor[] pageProcessors)
 		{
-			return new Spider(identify, scheduler, pageProcessors, null);
+			return new SpiderBase(identify, scheduler, pageProcessors, null);
 		}
 
-		public Spider AddHeaders(string host, Dictionary<string, object> headers)
+		public SpiderBase AddHeaders(string host, Dictionary<string, object> headers)
 		{
 			CheckIfRunning();
 			var key = host.ToLower();
@@ -510,7 +508,7 @@ namespace DotnetSpider.Core
 		/// </summary>
 		/// <param name="beforeProcessorHandler"></param>
 		/// <returns></returns>
-		public Spider AddBeforeProcessor(IBeforeProcessorHandler beforeProcessorHandler)
+		public SpiderBase AddBeforeProcessor(IBeforeProcessorHandler beforeProcessorHandler)
 		{
 			BeforeProcessors.Add(beforeProcessorHandler);
 			return this;
@@ -521,7 +519,7 @@ namespace DotnetSpider.Core
 		/// </summary>
 		/// <param name="builder"></param>
 		/// <returns></returns>
-		public Spider AddRequestBuilder(IRequestBuilder builder)
+		public SpiderBase AddRequestBuilder(IRequestBuilder builder)
 		{
 			if (builder == null)
 			{
@@ -539,7 +537,7 @@ namespace DotnetSpider.Core
 		/// <param name="url">链接</param>
 		/// <param name="extras">Extra properties of request.</param>
 		/// <returns></returns>
-		public Spider AddRequest(string url, Dictionary<string, dynamic> extras)
+		public SpiderBase AddRequest(string url, Dictionary<string, dynamic> extras)
 		{
 			return AddRequests(new Request(url, extras));
 		}
@@ -549,7 +547,7 @@ namespace DotnetSpider.Core
 		/// </summary>
 		/// <param name="urls">链接</param>
 		/// <returns>爬虫</returns>
-		public Spider AddRequests(params string[] urls)
+		public SpiderBase AddRequests(params string[] urls)
 		{
 			if (urls == null)
 			{
@@ -564,7 +562,7 @@ namespace DotnetSpider.Core
 		/// </summary>
 		/// <param name="urls">链接</param>
 		/// <returns>爬虫</returns>
-		public Spider AddRequests(IEnumerable<string> urls)
+		public SpiderBase AddRequests(IEnumerable<string> urls)
 		{
 			if (urls == null)
 			{
@@ -579,7 +577,7 @@ namespace DotnetSpider.Core
 		/// </summary>
 		/// <param name="request">Request</param>
 		/// <returns>Spider</returns>
-		public Spider AddRequest(Request request)
+		public SpiderBase AddRequest(Request request)
 		{
 			return AddRequests(request);
 		}
@@ -589,7 +587,7 @@ namespace DotnetSpider.Core
 		/// </summary>
 		/// <param name="requests">链接</param>
 		/// <returns>爬虫</returns>
-		public Spider AddRequests(params Request[] requests)
+		public SpiderBase AddRequests(params Request[] requests)
 		{
 			if (requests == null)
 			{
@@ -604,7 +602,7 @@ namespace DotnetSpider.Core
 		/// </summary>
 		/// <param name="requests">链接</param>
 		/// <returns>爬虫</returns>
-		public Spider AddRequests(IEnumerable<Request> requests)
+		public SpiderBase AddRequests(IEnumerable<Request> requests)
 		{
 			if (requests == null)
 			{
@@ -625,7 +623,7 @@ namespace DotnetSpider.Core
 		/// </summary>
 		/// <param name="processor">页面解析器</param>
 		/// <returns>爬虫</returns>
-		public virtual Spider AddPageProcessor(IPageProcessor processor)
+		public virtual SpiderBase AddPageProcessor(IPageProcessor processor)
 		{
 			return AddPageProcessors(processor);
 		}
@@ -635,7 +633,7 @@ namespace DotnetSpider.Core
 		/// </summary>
 		/// <param name="processors">页面解析器</param>
 		/// <returns>爬虫</returns>
-		public virtual Spider AddPageProcessors(params IPageProcessor[] processors)
+		public virtual SpiderBase AddPageProcessors(params IPageProcessor[] processors)
 		{
 			if (processors == null)
 			{
@@ -650,7 +648,7 @@ namespace DotnetSpider.Core
 		/// </summary>
 		/// <param name="processors">页面解析器</param>
 		/// <returns>爬虫</returns>
-		public virtual Spider AddPageProcessors(IEnumerable<IPageProcessor> processors)
+		public virtual SpiderBase AddPageProcessors(IEnumerable<IPageProcessor> processors)
 		{
 			if (processors != null)
 			{
@@ -672,7 +670,7 @@ namespace DotnetSpider.Core
 		/// </summary>
 		/// <param name="pipeline">数据管道</param>
 		/// <returns>爬虫</returns>
-		public virtual Spider AddPipeline(IPipeline pipeline)
+		public virtual SpiderBase AddPipeline(IPipeline pipeline)
 		{
 			return AddPipelines(pipeline);
 		}
@@ -682,7 +680,7 @@ namespace DotnetSpider.Core
 		/// </summary>
 		/// <param name="pipelines">数据管道</param>
 		/// <returns>爬虫</returns>
-		public virtual Spider AddPipelines(params IPipeline[] pipelines)
+		public virtual SpiderBase AddPipelines(params IPipeline[] pipelines)
 		{
 			if (pipelines == null)
 			{
@@ -697,7 +695,7 @@ namespace DotnetSpider.Core
 		/// </summary>
 		/// <param name="pipelines">数据管道</param>
 		/// <returns>爬虫</returns>
-		public virtual Spider AddPipelines(IEnumerable<IPipeline> pipelines)
+		public virtual SpiderBase AddPipelines(IEnumerable<IPipeline> pipelines)
 		{
 			if (pipelines == null)
 			{

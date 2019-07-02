@@ -1,11 +1,8 @@
-﻿using DotnetSpider.Sample.docs;
+﻿using DotnetSpider.Generic.docs;
 using System;
-#if NETCOREAPP
 using System.Text;
 
-#else
 using System.Threading;
-#endif
 
 namespace DotnetSpider.Sample
 {
@@ -28,7 +25,7 @@ namespace DotnetSpider.Sample
 			//});
 
 
-			SimpleSpider.Run();
+			GenericSpider.Run();
 			Console.Read();
 		}
 
